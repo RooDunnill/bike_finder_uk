@@ -13,13 +13,13 @@ from urllib.parse import urlparse, urlunparse
 
 SEARCH_KEYWORDS = ["bike"]
 KNOWN_BIKES = ["Trek" ,"Carrera", "Specialised"]
-LOCATION_MODE = "anywhere"  # "edinburgh" or "anywhere"
+LOCATION_MODE = "edinburgh"  # "edinburgh" or "anywhere"
 ENABLE_EBAY = True                 #runs the ebay scraper
 ENABLE_GUMTREE = True              #runs the gumtree scraper
 CLEAR_CACHE_ON_START = True        #clears the cache, enabling the same matches to be printed
-ENABLE_LOGGING = False             #mostly for debugging, explains the process
-EBAY_RATIO = 0.3                   #tweak for how strict the search is for ebay
-GUMTREE_RATIO = 0.1                #tweak for how strict the search is for gumtree 
+ENABLE_LOGGING = True             #mostly for debugging, explains the process
+EBAY_RATIO = 0.2                   #tweak for how strict the search is for ebay
+GUMTREE_RATIO = 0.05                #tweak for how strict the search is for gumtree 
 
 CACHE_DIR = Path("~/.cache").expanduser()
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -37,6 +37,9 @@ HEADERS = {                        #the profile we mimic
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 }
 
+
+ebay_matches = []
+gumtree_matches = []
 # ------------------ LOGGING SETUP ------------------
 if ENABLE_LOGGING:
     logging.basicConfig(
@@ -50,15 +53,18 @@ else:
 # ---------- Shared matching logic -----------
 
 def is_match(title, website=None):
-    logging.info(f"Checking title: {title}")
+    title = title.lower()
     for known in KNOWN_BIKES:
-        ratio = difflib.SequenceMatcher(None, title.lower(), known.lower()).ratio()
-        logging.info(f"  Against: '{known}' -> ratio: {ratio:.2f}")
+        ratio = difflib.SequenceMatcher(None, title, known.lower()).ratio()
         RATIO = EBAY_RATIO if website == "ebay" else GUMTREE_RATIO
         if ratio > RATIO:
-            logging.info("MATCH FOUND")
             return True
-    logging.info("No match")
+
+    if website == "gumtree":
+        for keyword in SEARCH_KEYWORDS:
+            if keyword.lower() in title:
+                return True
+
     return False
 
 def is_nearby(location):
@@ -132,17 +138,12 @@ def process_ebay():
             logging.info("Already seen: skipping")
             continue
 
-        logging.info(f"Title: {title}")
-        logging.info(f"Location: {location}")
-        logging.info(f"Link: {link}")
-
         matched = is_match(title, website="ebay")
         located = is_nearby(location)
 
         if matched and located:
             title = title[11:]
-            print(title)
-            print(link + "\n")
+            ebay_matches.append((title, link))
 
         new_seen.add(link)
 
@@ -216,12 +217,8 @@ def process_gumtree():
             logging.info("Already seen: skipping")
             continue
 
-        logging.info(f"Title: {item['title']}")
-        logging.info(f"Link: {item['link']}")
-
         if is_match(item["title"], website="gumtree"):
-            print(item["title"])
-            print(item["link"] + "\n")
+            gumtree_matches.append((item["title"], item["link"]))
 
         mark_gumtree_seen(item["link"])
         time.sleep(2.1)
@@ -247,6 +244,17 @@ def main():
         process_ebay()
     if ENABLE_GUMTREE:
         process_gumtree()
+    if ebay_matches:
+        print(f"All ebay matches!")
+    for title, link in ebay_matches:
+        print(title)
+        print(link + "\n")
+    
+    if gumtree_matches:
+        print(f"All gumtree matches!")
+    for title, link in gumtree_matches:
+        print(title)
+        print(link + "\n")
     logging.info("Scraper finished!")
 
 if __name__ == "__main__":
