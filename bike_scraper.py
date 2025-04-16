@@ -7,15 +7,6 @@ import time
 import logging
 from urllib.parse import urlparse, urlunparse
 
-"""
-Hi there, here is a basi scraping script that hopefully will show any bikes on sale, i tried to make it as simple to
-follow, but im also not the best programmer XD. 
-
-
-
-
-"""
-
 
 
 # ------------------ CONFIG ------------------
@@ -65,9 +56,9 @@ def is_match(title, website=None):
         logging.info(f"  Against: '{known}' -> ratio: {ratio:.2f}")
         RATIO = EBAY_RATIO if website == "ebay" else GUMTREE_RATIO
         if ratio > RATIO:
-            logging.info("  Match found")
+            logging.info("MATCH FOUND")
             return True
-    logging.info("  No match")
+    logging.info("No match")
     return False
 
 def is_nearby(location):
@@ -149,16 +140,14 @@ def process_ebay():
         located = is_nearby(location)
 
         if matched and located:
-            logging.info("MATCH FOUND")
             title = title[11:]
             print(title)
             print(link + "\n")
-        else:
-            logging.info("Not a match")
 
         new_seen.add(link)
 
     save_ebay_seen(new_seen)
+    time.sleep(2.1)
 
 # ---------------- Gumtree -------------------
 
@@ -230,16 +219,12 @@ def process_gumtree():
         logging.info(f"Title: {item['title']}")
         logging.info(f"Link: {item['link']}")
 
-        if not is_match(item["title"], website="gumtree"):
-            logging.info("Not a match: skipping")
-            continue
-
-        logging.info("MATCH FOUND")
-        print(item["title"])
-        print(item["link"] + "\n")
+        if is_match(item["title"], website="gumtree"):
+            print(item["title"])
+            print(item["link"] + "\n")
 
         mark_gumtree_seen(item["link"])
-        time.sleep(2)
+        time.sleep(2.1)
 
 # ------------------ Main --------------------
 
